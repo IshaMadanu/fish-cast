@@ -1,6 +1,0 @@
-chatbot/.env
-chatbot/audit
-chatbot/.collection_state.json
-**/__pycache__
-**/.pytest_cache
-**/.ruff_cache

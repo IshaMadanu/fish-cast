@@ -8,16 +8,6 @@ version = "0.2.0"
 description = "Forecasting Antarctic krill distribution relative to CCAMLR marine protected areas"
 requires-python = ">=3.9"
 
-[project.optional-dependencies]
-chatbot = [
-    "fastapi==0.115.6",
-    "httpx==0.28.1",
-    "python-dotenv==1.0.1",
-    "uvicorn==0.34.0",
-    "streamlit==1.55.0",
-    "xai-sdk==1.21.0",
-]
-
 [tool.setuptools.packages.find]
 include = ["fishcast*"]
 
@@ -30,4 +20,3 @@ select = ["E9", "F63", "F7", "F82"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]

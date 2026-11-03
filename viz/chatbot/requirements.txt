@@ -1,6 +1,0 @@
--r requirements-test.txt
-uvicorn==0.34.0
-# 1.55 installs on Python 3.10, allows packaging>=25 (xai-sdk 1.21), and does not
-# import Starlette. 1.60 does, and it breaks on the Starlette pin FastAPI 0.115 uses.
-streamlit==1.55.0
-xai-sdk==1.21.0

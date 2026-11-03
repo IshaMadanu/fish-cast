@@ -13,12 +13,6 @@ __pycache__/
 .venv-geobench/
 venv/
 
-# Secrets and chatbot local state
-.env
-viz/chatbot/.env
-viz/chatbot/.collection_state.json
-viz/chatbot/audit/
-
 # Build
 build/
 dist/
