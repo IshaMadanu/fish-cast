@@ -17,6 +17,7 @@ import uuid
 import httpx
 import streamlit as st
 
+from viz.chatbot.errors import detail_from_body, http_error_message
 from viz.chatbot.prompt import DISCLAIMER, HUMAN_REVIEW_NOTE
 
 DOC_TYPES = ["model_output", "project_doc", "policy", "literature", "limitations"]
@@ -76,7 +77,9 @@ def _post_chat(message: str) -> dict:
     done: dict = {}
     box = st.empty()
     with httpx.stream("POST", url, json=payload, auth=_auth(), timeout=st.session_state["timeout"]) as response:
-        response.raise_for_status()
+        if response.status_code >= 400:
+            detail = detail_from_body(response.read())
+            raise RuntimeError(detail or f"The chat service returned {response.status_code}.")
         for event, data in _read_sse(response):
             if event == "token":
                 tokens.append(data.get("text") or "")
@@ -156,7 +159,7 @@ def main() -> None:
             try:
                 done = _post_chat(message)
             except Exception as exc:  # noqa: BLE001 — show the failure in the page, do not hide it.
-                st.error(str(exc))
+                st.error(http_error_message(exc))
                 st.warning(DISCLAIMER)
                 return
             answer = done.get("answer") or ""
@@ -185,7 +188,8 @@ def main() -> None:
             response.raise_for_status()
             body = response.json()
         except Exception as exc:  # noqa: BLE001
-            st.error(str(exc))
+            st.error(http_error_message(exc))
+            st.warning(DISCLAIMER)
         else:
             st.warning(DISCLAIMER)
             if body.get("human_review_required"):
@@ -213,7 +217,8 @@ def main() -> None:
             response.raise_for_status()
             body = response.json()
         except Exception as exc:  # noqa: BLE001
-            st.error(str(exc))
+            st.error(http_error_message(exc))
+            st.warning(DISCLAIMER)
         else:
             st.caption(body.get("disclaimer") or DISCLAIMER)
             _show_passages(body.get("passages") or [])

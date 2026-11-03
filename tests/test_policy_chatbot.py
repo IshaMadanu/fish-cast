@@ -11,6 +11,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from viz.chatbot.app import create_app
+from viz.chatbot.errors import detail_from_body, http_error_message
 from viz.chatbot.build_collection import plan
 from viz.chatbot.catalog import CATALOG, repo_root
 from viz.chatbot.filters import ALLOWED_DOC_TYPES, ALLOWED_SKILL_STATUS, FilterError, filter_expression
@@ -466,6 +467,22 @@ def test_collection_pin_and_default_model(monkeypatch):
     assert loaded.collection_version == "fishcast-policy-2026-11-03"
     assert loaded.reasoning_effort == "high"
     assert loaded.enable_web_search is False
+
+
+def test_detail_from_body_reads_fastapi_detail():
+    assert detail_from_body(b'{"detail":"XAI_API_KEY is not set."}') == "XAI_API_KEY is not set."
+    assert detail_from_body(b"not-json") is None
+
+
+def test_http_error_message_uses_api_detail():
+    class Response:
+        def json(self):
+            return {"detail": "XAI_API_KEY is not set."}
+
+    exc = Exception("Server error '503 Service Unavailable'")
+    exc.response = Response()
+    assert http_error_message(exc) == "XAI_API_KEY is not set."
+    assert http_error_message(Exception("plain")) == "plain"
 
 
 def test_installed_sdk_has_no_filter_parameter_yet():
