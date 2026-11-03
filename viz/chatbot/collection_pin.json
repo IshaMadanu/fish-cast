@@ -1,0 +1,7 @@
+{
+  "collection_version": "fishcast-policy-2026-11-03",
+  "preprocessing_version": "2",
+  "sdk": "xai-sdk==1.21.0",
+  "default_model": "grok-4.7",
+  "notes": "Bump collection_version only when the uploaded document set changes. The live collection id comes from XAI_COLLECTION_ID after build_collection.py and is not committed."
+}
