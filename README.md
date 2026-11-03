@@ -17,7 +17,6 @@ The main question for Fall 2026: does the model predict krill better than simple
 | `docs/` | Methodology, model variants, change logs |
 | `analysis/` | Analysis subteam notes, experiment write-ups, methods research |
 | `viz/` | Data Visualization subteam: `prototype/` polar map, `figures/` chart scripts, web app (to come) |
-| `viz/chatbot/` | Policy chatbot for CCAMLR-facing questions (Grok API and a document collection). See `viz/chatbot/README.md` |
 | `notebooks/` | `01_data_tour` and `02_benchmark_results` for new members; the old merge notebook for reference |
 
 ## Quick start
@@ -52,7 +51,3 @@ python scripts/benchmark_skill.py --gp-runs artifacts/my_first_run --output arti
 ## Key results so far
 
 Only models that use recent krill catches currently beat a constant prediction on the test years (about 5% lower error). No climate-only model shows skill yet. All runs from before 27 September 2026 are invalid; see `docs/CHANGES_preprocessing_v2.md`.
-
-## Policy chatbot
-
-`viz/chatbot/` is a separate FastAPI and Streamlit app for policymakers and CCAMLR delegates. It answers from a pinned document collection and is instructed not to claim skill the benchmarks do not show. Setup, the collection build, and the governance rules are in `viz/chatbot/README.md`.
