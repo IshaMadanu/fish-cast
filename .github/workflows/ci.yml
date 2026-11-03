@@ -20,6 +20,8 @@ jobs:
         run: |
           pip install -r requirements-dev.txt
           pip install -e .
+      - name: Install chatbot test dependencies
+        run: pip install -r viz/chatbot/requirements-test.txt
       - name: Lint
         run: ruff check .
       - name: Tests
