@@ -2,9 +2,9 @@
 <!--
   South-polar map prototype (Data Viz week 1 starter).
 
-  Run from the repository root:
+  Run from the repository root (stop any old static server with Ctrl+C first):
       python scripts/data/convert_mpa_to_wgs84.py      # once, makes data/CCAMLR_MPA_wgs84.geojson
-      python -m http.server 8000
+      python scripts/chat_server.py                    # set XAI_API_KEY in this terminal first
   then open http://localhost:8000/viz/prototype/polar_map.html
 
   Shows: land (Natural Earth via world-atlas), CCAMLR marine protected areas, and a sample
@@ -26,6 +26,21 @@
   .legend { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; padding: 8px 16px 16px; font-size: 12px; }
   .swatch { display: inline-block; width: 12px; height: 12px; vertical-align: -2px; margin-right: 4px; border-radius: 2px; }
   #status { color: #b05000; }
+  #chat {
+    position: fixed; right: 18px; bottom: 18px; z-index: 2; width: min(360px, calc(100vw - 36px));
+    background: white; border: 1px solid #cbd6dc; border-radius: 12px; box-shadow: 0 4px 20px #0f2a3826;
+    overflow: hidden;
+  }
+  #chat h2 { margin: 0; padding: 12px 14px; background: #0f2a38; color: white; font-size: 15px; }
+  #chat-status { padding: 8px 12px 0; color: #5b6870; font-size: 12px; }
+  #chat-messages { height: 220px; overflow-y: auto; padding: 10px 12px; }
+  .chat-message { margin: 0 0 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .chat-message strong { display: block; font-size: 12px; }
+  #chat-form { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid #e1e7ea; }
+  #chat-question { min-width: 0; flex: 1; padding: 8px; border: 1px solid #b9c5cb; border-radius: 6px; font: inherit; }
+  #chat-form button { padding: 8px 12px; border: 0; border-radius: 6px; background: #176b84; color: white; font: inherit; }
+  #chat-form button:disabled, #chat-question:disabled { opacity: .55; }
+  @media (max-width: 500px) { #chat { right: 10px; bottom: 10px; width: calc(100vw - 20px); } }
 </style>
 </head>
 <body>
@@ -35,12 +50,86 @@
 </header>
 <svg id="map" viewBox="0 0 860 860" role="img" aria-label="Map of Antarctica with marine protected areas and krill haul locations"></svg>
 <div class="legend" id="legend"></div>
+<aside id="chat" aria-label="FishCast historical haul data chat">
+  <h2>Ask about historical haul data</h2>
+  <div id="chat-status" role="status">Checking for haul data and Grok configuration...</div>
+  <div id="chat-messages" aria-live="polite">
+    <p class="chat-message"><strong>FishCast</strong>Ask about historical krill haul observations and the environmental data recorded with them.</p>
+  </div>
+  <form id="chat-form">
+    <input id="chat-question" type="text" maxlength="2000" placeholder="Ask about historical krill hauls..." aria-label="Your question" required>
+    <button id="chat-send" type="submit">Send</button>
+  </form>
+</aside>
 
 <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
 <script>
 const SIZE = 860, SAMPLE = 500;
 const DATA = "../../data/";
+const chatForm = document.getElementById("chat-form");
+const chatQuestion = document.getElementById("chat-question");
+const chatSend = document.getElementById("chat-send");
+const chatStatus = document.getElementById("chat-status");
+const chatMessages = document.getElementById("chat-messages");
+chatQuestion.disabled = true;
+chatSend.disabled = true;
+
+function addChatMessage(speaker, message) {
+  const paragraph = document.createElement("p");
+  paragraph.className = "chat-message";
+  const label = document.createElement("strong");
+  label.textContent = speaker;
+  paragraph.append(label, document.createTextNode(message));
+  chatMessages.append(paragraph);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+async function checkChatStatus() {
+  try {
+    const response = await fetch("/api/status");
+    const status = await response.json();
+    if (status.ready) {
+      chatStatus.textContent = `Using historical haul data: ${status.historical_file}`;
+      chatQuestion.disabled = false;
+      chatSend.disabled = false;
+    } else {
+      const missing = [];
+      if (!status.historical_file) missing.push("data/krillcast_merged.csv");
+      if (!status.has_api_key) missing.push("XAI_API_KEY on the server");
+      chatStatus.textContent = `Chat needs ${missing.join(" and ")}.`;
+    }
+  } catch {
+    chatStatus.textContent = "Chat server unavailable. Start scripts/chat_server.py to enable chat.";
+  }
+}
+
+chatForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const question = chatQuestion.value.trim();
+  if (!question) return;
+  addChatMessage("You", question);
+  chatQuestion.value = "";
+  chatQuestion.disabled = true;
+  chatSend.disabled = true;
+  chatStatus.textContent = "Checking historical haul data and asking Grok...";
+  try {
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question })
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || `Chat request failed (${response.status}).`);
+    addChatMessage("FishCast", result.answer);
+    chatStatus.textContent = `Answered using historical data: ${result.source_file}`;
+  } catch (error) {
+    addChatMessage("FishCast", error.message);
+    chatStatus.textContent = "Could not answer that question.";
+  } finally {
+    await checkChatStatus();
+  }
+});
 
 // Change this line to compare projections. Both are centred on the South Pole.
 const projection = d3.geoAzimuthalEqualArea()          // or d3.geoStereographic()
@@ -100,6 +189,7 @@ async function main() {
     '<span><span class="swatch" style="background:#fff;border:1px solid #33424a"></span>Haul, no krill</span>' +
     '<span><span class="swatch" style="width:48px;background:linear-gradient(90deg,' + d3.interpolateViridis(0.1) + ',' + d3.interpolateViridis(0.5) + ',' + d3.interpolateViridis(0.95) + ')"></span>Haul, fewer to more krill (log scale)</span>';
 }
+checkChatStatus();
 main();
 </script>
 </body>
